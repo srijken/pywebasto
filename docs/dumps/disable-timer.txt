@@ -4,7 +4,7 @@ curl 'https://my.webastoconnect.com/webapi/save_timers' \
   -H 'Cache-Control: no-cache' \
   -H 'Connection: keep-alive' \
   -H 'Content-Type: application/x-www-form-urlencoded; charset=UTF-8' \
-  -b 'cookies_accepted=4; i18next=en; hssess-webclient=479da2723cbf442b935590e5ec98d7c7; lang=en' \
+  -b 'cookies_accepted=4; i18next=en; hssess-webclient=<redacted>; lang=en' \
   -H 'Origin: https://my.webastoconnect.com' \
   -H 'Pragma: no-cache' \
   -H 'Referer: https://my.webastoconnect.com/index.html?lang=en' \
