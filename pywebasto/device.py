@@ -1,6 +1,6 @@
 """Device class for Webasto devices."""
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 
@@ -192,7 +192,7 @@ class WebastoDevice:
             subscription.get("expiration"), int | float
         ):
             self.__subscription_expiration = datetime.fromtimestamp(
-                subscription["expiration"], timezone.utc
+                subscription["expiration"], UTC
             )
 
         self.__output_main = {}
@@ -232,7 +232,7 @@ class WebastoDevice:
             return
 
         self.__subscription_expiration = datetime.fromtimestamp(
-            value["subscription"]["expiration"], timezone.utc
+            value["subscription"]["expiration"], UTC
         )
         connection_lost = value.get("connection_lost")
         if isinstance(connection_lost, bool):
@@ -302,7 +302,7 @@ class WebastoDevice:
         if (ontime := self.output_main_ontime) is None:
             return None
 
-        return datetime.fromtimestamp(ontime, timezone.utc)
+        return datetime.fromtimestamp(ontime, UTC)
 
     @property
     def output_aux1(self) -> bool:

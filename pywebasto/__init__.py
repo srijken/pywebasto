@@ -3,7 +3,6 @@
 import asyncio
 import json
 import logging
-import sys
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from inspect import isawaitable
@@ -39,9 +38,6 @@ from .exceptions import (
     UnauthorizedException,
 )
 from .timer import SimpleTimer
-
-if sys.version_info < (3, 11, 0):
-    sys.exit("The pywebasto module requires Python 3.11.0 or later")
 
 __all__ = ["AppCredentials", "SimpleTimer", "WebastoConnect"]
 
@@ -421,10 +417,10 @@ class WebastoConnect:
 
                     return None
             except (
+                TimeoutError,
                 aiohttp.ClientConnectionError,
                 aiohttp.ClientOSError,
                 aiohttp.ServerTimeoutError,
-                asyncio.TimeoutError,
             ) as err:
                 if attempt < max_attempts - 1:
                     delay = self._backoff_seconds(attempt)
@@ -501,10 +497,10 @@ class WebastoConnect:
 
                 return text
         except (
+            TimeoutError,
             aiohttp.ClientConnectionError,
             aiohttp.ClientOSError,
             aiohttp.ServerTimeoutError,
-            asyncio.TimeoutError,
         ) as err:
             raise InvalidRequestException(f"App API request failed: {err}") from err
 
