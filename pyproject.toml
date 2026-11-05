@@ -3,7 +3,7 @@ name = "pywebasto-ng"
 version = "3.0.1"
 description = "API library for Webasto ThermoConnect devices"
 authors = ["Malene Trab <malene@trab.dk>", "Sander Rijken"]
-license = "MIT"
+license = "GPL-3.0-only"
 readme = "README.md"
 classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules"
