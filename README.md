@@ -16,8 +16,10 @@ USE THIS MODULE AT YOUR OWN RISK.
 ## Installation
 
 ```bash
-pip3 install pywebasto
+pip3 install pywebasto-ng
 ```
+
+The package is published as `pywebasto-ng`; the import name stays `pywebasto`.
 
 ## Login
 
