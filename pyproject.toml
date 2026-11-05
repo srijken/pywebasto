@@ -2,17 +2,17 @@
 name = "pywebasto-ng"
 version = "3.0.1"
 description = "API library for Webasto ThermoConnect devices"
-authors = ["Malene Trab <malene@trab.dk>"]
+authors = ["Malene Trab <malene@trab.dk>", "Sander Rijken"]
 license = "MIT"
 readme = "README.md"
 classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules"
 ]
-documentation = "https://github.com/mtrab/pywebasto"
+documentation = "https://github.com/srijken/pywebasto"
 packages = [{ include = "pywebasto" }]
 
 [tool.poetry.urls]
-"Bug Tracker" = "https://github.com/mtrab/pywebasto/issues"
+"Bug Tracker" = "https://github.com/srijken/pywebasto/issues"
 
 [tool.poetry.dependencies]
 python = "^3.11"
