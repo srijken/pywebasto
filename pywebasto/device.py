@@ -200,24 +200,28 @@ class WebastoDevice:
         self.__output_aux2 = {}
 
         for section in ("outputs", "disabled_outputs"):
-            for output in value.get(section, []):
-                if output["line"] == "OUTH" or output["line"] == "OUTV":
-                    if output["line"] == "OUTH":
-                        self.__icon_heat = output["icon"]
+            for output in value.get(section) or []:
+                if not isinstance(output, dict):
+                    continue
+                line = output.get("line")
+                icon = output.get("icon", "")
+                if line == "OUTH" or line == "OUTV":
+                    if line == "OUTH":
+                        self.__icon_heat = icon
                         if section == "outputs":
                             self.__ventilation = False
                     else:
-                        self.__icon_vent = output["icon"]
+                        self.__icon_vent = icon
                         if section == "outputs":
                             self.__ventilation = True
                     if section == "outputs":
                         self.__output_main = output
-                elif output["line"] == "OUT1":
+                elif line == "OUT1":
                     self.__output_aux1 = output
-                    self.__icon_aux1 = output["icon"]
-                elif output["line"] == "OUT2":
+                    self.__icon_aux1 = icon
+                elif line == "OUT2":
                     self.__output_aux2 = output
-                    self.__icon_aux2 = output["icon"]
+                    self.__icon_aux2 = icon
 
     @property
     def dev_data(self) -> dict | None:

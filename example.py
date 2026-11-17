@@ -29,7 +29,8 @@ async def main():
         await webasto.connect()
 
         print(f"Client ID: {webasto.client_id}")
-        print(f"Client secret: {webasto.client_secret}")
+        # The client secret controls the heater; do not print or share it.
+        print(f"Client secret stored: {webasto.client_secret is not None}")
 
         for device in webasto.devices.values():
             print(f"Found device: {device.name} (ID: {device.device_id})")
