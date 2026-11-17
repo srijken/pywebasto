@@ -267,6 +267,30 @@ Keys read by current code:
 - In groups `webasto` / `outputs`:
   - timeout keys `OUTH`, `OUTV`, `OUT1`, `OUT2`
 
+Additional settings read as device properties (observed 2026-11-17, read-only;
+writing them needs `/post_settings` capture evidence):
+
+| Group | Key | Field(s) used | Property |
+| --- | --- | --- | --- |
+| top level | `hw_version`, `sw_version`, `sw_variant`, `sw_external` | value | `hardware_version`, `software_version`, `software_variant`, `software_external_version` |
+| `general` | `geofence` | `enabled`, `value` (km) | `geofence_radius` |
+| `general` | `def_output` | `value` (`automatic`, `output1`, `OUTA`, `webasto_heater`, `webasto_ventilation`) | `default_output` |
+| `general` | `sig_lost_off` | `enabled`, `value` (minutes) | `signal_lost_shutdown_enabled`, `signal_lost_shutdown_minutes` |
+| `webasto` | `webasto_emul_mode` | `value` (`wb_auto_detect`, `thermoconnect`, `telestart`, `telestart_special`, `timer`) | `emulation_mode` |
+
+## Status Fields from App Data (`/all?api_v=8`)
+
+Observed in app-backend device data on 2026-11-17 and exposed read-only:
+
+| Key | Observed value | Property | Interpretation |
+| --- | --- | --- | --- |
+| `vwarn` | `true` | `low_voltage_warning` | Low-voltage warning. Observed `true` while voltage (10.1 V) was below `low_voltage_cutoff` (10.3 V); exact rule unconfirmed. |
+| `seen` | `97`–`465` | `last_seen_seconds` | Time since the device last contacted the cloud, assumed seconds; unconfirmed. |
+| `alarms` | `"ON"` | `alarm_state` | Raw alarm state; `"CONF"` was seen in earlier analysis. |
+| `geofence_enabled` | `true` | `geofence_enabled` | Geofence on/off. |
+| `subscription.status` | `"ok"` | `subscription_status` | Subscription status. |
+| output `*_available` | booleans | `output_main_features` | Feature flags of the active main output (parking heating, ventilation, eco, boost). |
+
 ## Known Gaps (Need Capture Validation)
 
 - Exact content type sent/required for each endpoint

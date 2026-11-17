@@ -163,6 +163,19 @@ await webasto.update(force=True)
 | association_status | Raw app association status | str |
 | connection_lost | Raw cloud link state | bool |
 | is_connected | Derived cloud link state | bool |
+| low_voltage_warning | Low-voltage warning flag (`vwarn`) | bool or None |
+| last_seen_seconds | Seconds since the device last contacted the cloud (`seen`) | int or None |
+| alarm_state | Raw alarm state (`alarms`, e.g. `ON`) | str or None |
+| geofence_enabled | Geofence is enabled | bool or None |
+| geofence_radius | Geofence radius in km | float or None |
+| subscription_status | Subscription status (e.g. `ok`) | str or None |
+| default_output | Default output setting (`def_output`) | str or None |
+| signal_lost_shutdown_enabled | Outputs switch off after signal loss | bool or None |
+| signal_lost_shutdown_minutes | Minutes after signal loss before switching off | int or None |
+| emulation_mode | Webasto emulation mode (`webasto_emul_mode`) | str or None |
+| hardware_version / software_version / software_variant | Versions from settings | str |
+| software_external_version | External software version (`sw_external`) | str or None |
+| output_main_features | `*_available` feature flags of the main output | dict |
 
 ## Functions
 
