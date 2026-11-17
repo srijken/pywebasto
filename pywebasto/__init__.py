@@ -37,9 +37,16 @@ from .exceptions import (
     TooManyRequestsException,
     UnauthorizedException,
 )
-from .timer import SimpleTimer
+from .timer import SimpleTimer, SmartTimer, Timer, UnknownTimer, timer_from_api_dict
 
-__all__ = ["AppCredentials", "SimpleTimer", "WebastoConnect"]
+__all__ = [
+    "AppCredentials",
+    "SimpleTimer",
+    "SmartTimer",
+    "Timer",
+    "UnknownTimer",
+    "WebastoConnect",
+]
 
 LOGGER = logging.getLogger(__name__)
 REQUEST_TIMEOUT = aiohttp.ClientTimeout(total=60, connect=10, sock_read=45)
@@ -708,14 +715,12 @@ class WebastoConnect:
         return did_switch_device
 
     @staticmethod
-    def _extract_simple_timers_from_data(
-        data: dict | None, line: str
-    ) -> list[SimpleTimer]:
-        """Extract simple timers for a specific output line from API data."""
+    def _extract_raw_timers_from_data(data: dict | None, line: str) -> list[dict]:
+        """Extract raw timer dicts for a specific output line from API data."""
         if not isinstance(data, dict):
             return []
 
-        timers: list[SimpleTimer] = []
+        timers: list[dict] = []
         for section in ("outputs", "disabled_outputs"):
             outputs = data.get(section)
             if not isinstance(outputs, list):
@@ -731,20 +736,72 @@ class WebastoConnect:
                 if not isinstance(output_timers, list):
                     continue
 
-                for timer_data in output_timers:
-                    if not isinstance(timer_data, dict):
-                        continue
-                    if timer_data.get("type") != "simple":
-                        continue
-
-                    try:
-                        timers.append(SimpleTimer.from_api_dict(timer_data))
-                    except (KeyError, TypeError, ValueError) as err:
-                        raise InvalidRequestException(
-                            f"Invalid simple timer data in response: {err}"
-                        ) from err
+                timers.extend(
+                    timer_data
+                    for timer_data in output_timers
+                    if isinstance(timer_data, dict)
+                )
 
         return timers
+
+    @staticmethod
+    def _extract_simple_timers_from_data(
+        data: dict | None, line: str
+    ) -> list[SimpleTimer]:
+        """Extract simple timers for a specific output line from API data."""
+        timers: list[SimpleTimer] = []
+        for timer_data in WebastoConnect._extract_raw_timers_from_data(data, line):
+            if timer_data.get("type") != "simple":
+                continue
+
+            try:
+                timers.append(SimpleTimer.from_api_dict(timer_data))
+            except (KeyError, TypeError, ValueError) as err:
+                raise InvalidRequestException(
+                    f"Invalid simple timer data in response: {err}"
+                ) from err
+
+        return timers
+
+    @staticmethod
+    def _extract_all_timers_from_data(data: dict | None, line: str) -> list[Timer]:
+        """Extract timers of every type for a specific output line from API data."""
+        timers: list[Timer] = []
+        for timer_data in WebastoConnect._extract_raw_timers_from_data(data, line):
+            try:
+                timers.append(timer_from_api_dict(timer_data))
+            except (KeyError, TypeError, ValueError) as err:
+                raise InvalidRequestException(
+                    f"Invalid {timer_data.get('type')} timer data in response: {err}"
+                ) from err
+
+        return timers
+
+    @staticmethod
+    def _merge_simple_timers(
+        raw_timers: list[dict], timers: list[SimpleTimer]
+    ) -> list[dict]:
+        """Replace the simple timers in a raw list, keeping other types in place.
+
+        Simple timers are matched by position: the n-th simple timer in
+        `raw_timers` becomes the n-th entry of `timers`. Extra entries are
+        appended; missing entries remove the remaining simple timers.
+        """
+        simple_timers = iter(timers)
+        merged: list[dict] = []
+        for timer_data in raw_timers:
+            if timer_data.get("type") != "simple":
+                try:
+                    merged.append(timer_from_api_dict(timer_data).to_api_dict())
+                except (KeyError, TypeError, ValueError):
+                    # Never drop a timer we cannot parse; send it back as-is.
+                    merged.append(dict(timer_data))
+                continue
+            replacement = next(simple_timers, None)
+            if replacement is not None:
+                merged.append(replacement.to_api_dict())
+        merged.extend(timer.to_api_dict() for timer in simple_timers)
+        return merged
 
     def _device_path(self, device_id: str, endpoint: str) -> str:
         """Build an app remote device path."""
@@ -782,12 +839,50 @@ class WebastoConnect:
         timers: list[SimpleTimer],
         line: Outputs = Outputs.HEATER,
     ) -> None:
-        """Save a full simple-timer list using the app `timers2` contract."""
+        """Save the simple-timer list for an output line.
+
+        Timers of other types (for example `smart` timers) on the same line are
+        kept unchanged, based on the latest data read from the API. Call
+        `get_timers()` first so that data is current.
+        """
         self._raise_if_pending(device)
 
+        known_device = self.devices.get(device.device_id)
+        raw_timers = self._extract_raw_timers_from_data(
+            known_device.last_data if known_device is not None else None,
+            line.value,
+        )
+        await self._post_timers(
+            device, line, self._merge_simple_timers(raw_timers, timers)
+        )
+
+    async def get_all_timers(
+        self, device: WebastoDevice, line: Outputs = Outputs.HEATER
+    ) -> list[Timer]:
+        """Get timers of every type for an output line from the latest API data."""
+        if device.pending_approval:
+            return []
+        await self.update(device_id=device.device_id, force=True)
+        data = self.devices[device.device_id].last_data
+        return self._extract_all_timers_from_data(data, line.value)
+
+    async def save_all_timers(
+        self,
+        device: WebastoDevice,
+        timers: list[Timer],
+        line: Outputs = Outputs.HEATER,
+    ) -> None:
+        """Replace the full timer list, of every type, for an output line."""
+        self._raise_if_pending(device)
+        await self._post_timers(device, line, [timer.to_api_dict() for timer in timers])
+
+    async def _post_timers(
+        self, device: WebastoDevice, line: Outputs, timers: list[dict]
+    ) -> None:
+        """Send a full timer list using the app `timers2` contract."""
         payload = {
             "output": line.value[-1],
-            "timers": [timer.to_api_dict() for timer in timers],
+            "timers": timers,
         }
         await self._app_call(
             "POST",

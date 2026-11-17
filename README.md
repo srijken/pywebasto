@@ -171,7 +171,9 @@ await webasto.update(force=True)
 | connect | Set up app credentials and load devices |
 | update | Refresh all app devices, cached for 60 seconds unless `force=True` |
 | get_timers | Read simple timers for an output |
-| save_timers | Save the full simple timer list for an output |
+| save_timers | Save the simple timer list for an output, keeping other timer types |
+| get_all_timers | Read timers of every type (simple, smart) for an output |
+| save_all_timers | Replace the full timer list, of every type, for an output |
 | set_output_main | Turn heater or ventilation output on/off |
 | set_output_aux1 | Turn AUX1 on/off |
 | set_output_aux2 | Turn AUX2 on/off |
@@ -210,7 +212,7 @@ await webasto.update(force=True)
 
 ## Timers
 
-Timer support is for `simple` timers.
+Simple timers start at a fixed time and run for a fixed duration.
 
 ```python
 from pywebasto import SimpleTimer
@@ -228,7 +230,33 @@ await webasto.save_timers(device, timers + [new_timer])
 ```
 
 `save_timers()` sends the full timer list. To edit or delete a timer, read the
-list, change it locally, and save the whole list again.
+list, change it locally, and save the whole list again. Smart timers on the same
+output are kept as they are.
+
+### Smart timers
+
+A smart timer has a departure time instead of a start time. The heater decides
+itself when to start, limited by `max_duration`.
+
+```python
+from pywebasto import SmartTimer
+
+timers = await webasto.get_all_timers(device)  # simple and smart timers
+
+new_timer = SmartTimer(
+    start=360,  # departure time, minutes after midnight UTC
+    max_duration=1800,  # seconds
+    comfort_level=5,
+    repeat=31,  # Monday-Friday
+    enabled=True,
+)
+
+await webasto.save_all_timers(device, timers + [new_timer])
+```
+
+`save_all_timers()` replaces every timer on the output, including smart timers.
+Reading smart timers is verified against live data; creating them from
+`pywebasto` is not live-verified yet.
 
 Weekday bitmask:
 

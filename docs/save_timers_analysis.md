@@ -12,9 +12,10 @@ No official Webasto documentation was used.
 
 ## Current implementation scope
 
-- In-scope for upcoming module work: `simple` timers only.
-- Out-of-scope for now: `smart` timers, due to lack of access to a setup that supports/verifies smart-timer behavior.
-- `smart` observations in this document are kept as protocol notes, not as active implementation targets.
+- `simple` timers: read and write.
+- `smart` timers: read and write, based on the app-backend observation from
+  2026-11-17 described below. Writing a new smart timer from `pywebasto` has
+  not been live-verified yet.
 
 ## Endpoint and method
 
@@ -89,9 +90,48 @@ Observed fields:
 - `departure` (int)
 - `location.lat` (string), `location.lon` (string)
 
-Status:
+App-backend observation (2026-11-17, `/all?api_v=8`, sanitized):
 
-- Observed in captures, but currently out-of-scope for implementation.
+A one-off smart timer was created in the Android app with departure 23:40 CET,
+maximum duration 30 minutes, comfort level 5, and a location restriction. The
+app-backend data then contained:
+
+```json
+{
+  "type": "smart",
+  "repeat": 0,
+  "start": 1360,
+  "maxDuration": 1800,
+  "comfortLevel": 5,
+  "location": {"lat": "REDACTED_LAT", "lon": "REDACTED_LON"},
+  "enabled": true
+}
+```
+
+Confirmed from this observation:
+
+- `start` holds the **departure** time in minutes after midnight UTC
+  (1360 = 22:40 UTC = 23:40 CET).
+- `departure` is not returned in app-backend data.
+- `maxDuration` is in seconds (1800 = 30 minutes).
+- `comfortLevel` is passed through as set in the app (5).
+- `repeat: 0` means a one-off timer.
+- `enabled` is present for smart timers.
+- `nextEvent` in the same response showed `"type": "smart"` and `"time": 1360`
+  for the line `OUTH`.
+
+Write behavior in `pywebasto`:
+
+- Smart timers are sent with both `start` and `departure` set to the departure
+  time. The web API dump above sends both fields with equal values, and the
+  Android app (static analysis) sends `departure`.
+- `save_timers()` (simple timers) keeps smart timers and timers of unknown types
+  on the same line in place, so they are not removed when simple timers change.
+
+Still unverified:
+
+- Range of `comfortLevel` (only `5` observed).
+- Whether the backend requires `departure`, `start`, or accepts either.
 
 ## Operation behavior inferred from payloads
 

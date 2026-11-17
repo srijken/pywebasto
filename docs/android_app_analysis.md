@@ -632,6 +632,11 @@ Observed app-built smart timer fields:
 `location` is only added when both latitude and longitude exist in the
 `ControlTimer` object.
 
+Live read-only observation on 2026-11-17: after creating a smart timer in the
+app, `/all?api_v=8` returned it with `start` (the departure time) and without
+`departure`. See `docs/save_timers_analysis.md` for the full sanitized payload
+and the field meanings confirmed from it.
+
 Live test evidence on 2026-05-23:
 
 1. Read current state with `/all?api_v=8`; `OUTH` had one timer.
