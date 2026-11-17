@@ -118,6 +118,9 @@ Observed variants:
 
 1. Ventilation mode / main timeout update:
    - `device_settings`: `OUTV_timeout_*`, `OUTH_timeout_*`, `webasto_emul_mode`
+   - `webasto_emul_mode` is sent with the device's current value from
+     `get_settings` (`webasto` group), so the update does not change the
+     emulation mode. `thermoconnect` is only sent when the settings are unknown.
    - `service_settings`: `OUTH_on`, `OUTV_on`, `heater_mode`, names/icons
 2. AUX timeout update:
    - `device_settings`: `<OUT1|OUT2>_function`, `<OUT1|OUT2>_timeout_*`

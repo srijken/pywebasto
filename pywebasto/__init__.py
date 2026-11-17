@@ -956,7 +956,7 @@ class WebastoConnect:
 
         payload = {
             "device_settings": {
-                "webasto_emul_mode": "thermoconnect",
+                "webasto_emul_mode": self._current_emulation_mode(device),
                 "OUTV_timeout_on": True,
                 "OUTV_timeout_h": vent_h,
                 "OUTV_timeout_min": vent_m,
@@ -974,6 +974,32 @@ class WebastoConnect:
             extra_headers=WEBAPI_AJAX_HEADERS,
         )
         await self.update(device_id=device.device_id, force=True)
+
+    @staticmethod
+    def _current_emulation_mode(device: WebastoDevice) -> str:
+        """Return the device's current emulation mode from webapi settings.
+
+        `/post_settings` for the main timeout sends `webasto_emul_mode`. Sending
+        a fixed value would overwrite a different mode, so the current value is
+        reused. `thermoconnect` is only used when the settings do not say.
+        """
+        settings = device.settings
+        groups = settings.get("settings_tab") if isinstance(settings, dict) else None
+        for group in groups if isinstance(groups, list) else []:
+            if not isinstance(group, dict) or group.get("group") != "webasto":
+                continue
+            for option in group.get("options", []):
+                if (
+                    isinstance(option, dict)
+                    and option.get("key") == "webasto_emul_mode"
+                    and isinstance(option.get("value"), str)
+                ):
+                    return option["value"]
+
+        LOGGER.debug(
+            "Emulation mode unknown for %s, sending 'thermoconnect'", device.device_id
+        )
+        return "thermoconnect"
 
     async def set_aux_timeout(
         self,
