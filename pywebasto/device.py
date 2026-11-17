@@ -251,6 +251,16 @@ class WebastoDevice:
         if value is None:
             return
 
+        hardware_version = value.get("hw_version")
+        if hardware_version is not None:
+            self.__hardware_version = str(hardware_version)
+        software_version = value.get("sw_version")
+        if software_version is not None:
+            self.__software_version = str(software_version)
+        software_variant = value.get("sw_variant")
+        if software_variant is not None:
+            self.__software_variant = str(software_variant)
+
         self.__allow_location = self.__get_value("general", "allow_GPS")
         self.__low_voltage_cutoff = self.__get_value("general", "low_voltage_cutoff")
         self.__temperature_compensation = self.__get_value("general", "ext_temp_comp")
@@ -421,6 +431,114 @@ class WebastoDevice:
     def pending_approval(self) -> bool:
         """Return whether the device is waiting for association approval."""
         return self.__pending_approval
+
+    @property
+    def software_external_version(self) -> str | None:
+        """Get the external software version (`sw_external` in settings)."""
+        value = (self.__settings or {}).get("sw_external")
+        return None if value is None else str(value)
+
+    @property
+    def low_voltage_warning(self) -> bool | None:
+        """Get the low-voltage warning flag (`vwarn` in app data).
+
+        Observed `true` while the voltage was below the low-voltage cutoff;
+        the exact backend rule is not documented.
+        """
+        return self.__data_value("vwarn", bool)
+
+    @property
+    def last_seen_seconds(self) -> int | None:
+        """Get the time since the device last contacted the cloud (`seen`).
+
+        Interpreted as seconds from observed values; not confirmed by docs.
+        """
+        value = self.__data_value("seen", int | float)
+        return None if value is None else int(value)
+
+    @property
+    def alarm_state(self) -> str | None:
+        """Get the raw alarm state (`alarms` in app data, e.g. `ON` or `CONF`)."""
+        return self.__data_value("alarms", str)
+
+    @property
+    def geofence_enabled(self) -> bool | None:
+        """Get whether the geofence is enabled (`geofence_enabled` in app data)."""
+        return self.__data_value("geofence_enabled", bool)
+
+    @property
+    def geofence_radius(self) -> float | None:
+        """Get the geofence radius in kilometers from settings."""
+        option = self.__get_option("general", "geofence")
+        if option is None or not isinstance(option.get("value"), int | float):
+            return None
+        return float(option["value"])
+
+    @property
+    def subscription_status(self) -> str | None:
+        """Get the subscription status (`subscription.status` in app data)."""
+        subscription = self.__data_value("subscription", dict)
+        if subscription is None or not isinstance(subscription.get("status"), str):
+            return None
+        return subscription["status"]
+
+    @property
+    def default_output(self) -> str | None:
+        """Get the default output setting (`def_output`)."""
+        value = self.__get_value("general", "def_output")
+        return value if isinstance(value, str) else None
+
+    @property
+    def signal_lost_shutdown_enabled(self) -> bool | None:
+        """Get whether outputs switch off after the signal is lost (`sig_lost_off`)."""
+        option = self.__get_option("general", "sig_lost_off")
+        if option is None or not isinstance(option.get("enabled"), bool):
+            return None
+        return option["enabled"]
+
+    @property
+    def signal_lost_shutdown_minutes(self) -> int | None:
+        """Get the minutes after signal loss before outputs switch off."""
+        option = self.__get_option("general", "sig_lost_off")
+        if option is None or not isinstance(option.get("value"), int | float):
+            return None
+        return int(option["value"])
+
+    @property
+    def emulation_mode(self) -> str | None:
+        """Get the Webasto emulation mode setting (`webasto_emul_mode`)."""
+        value = self.__get_value("webasto", "webasto_emul_mode")
+        return value if isinstance(value, str) else None
+
+    @property
+    def output_main_features(self) -> dict[str, bool]:
+        """Get the `*_available` feature flags of the active main output."""
+        return {
+            key: value
+            for key, value in self.__output_main.items()
+            if key.endswith("_available") and isinstance(value, bool)
+        }
+
+    def __data_value(self, key: str, expected_type: Any) -> Any:
+        """Get a typed top-level value from the latest app data."""
+        if not isinstance(self.__last_data, dict):
+            return None
+        value = self.__last_data.get(key)
+        return value if isinstance(value, expected_type) else None
+
+    def __get_option(self, group: str, key: str) -> dict | None:
+        """Get a full option dict from the settings dict."""
+        if not isinstance(self.settings, dict):
+            return None
+
+        for g in self.settings.get("settings_tab", []):
+            if not isinstance(g, dict) or g.get("group") != group:
+                continue
+
+            for o in g.get("options", []):
+                if isinstance(o, dict) and o.get("key") == key:
+                    return o
+        return None
 
     def __get_value(self, group: str, key: str) -> Any:
         """Get a value from the settings dict."""
