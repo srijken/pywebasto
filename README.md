@@ -263,3 +263,17 @@ position is available.
 - Email/password login uses the older webapi only when it is needed.
 - Command writes are not retried automatically.
 - Rate-limited responses raise an exception.
+
+## Publishing
+
+Releases are published to PyPI by `.github/workflows/deploy-pypi.yml` when a
+GitHub release is published. The version comes from the release tag (for
+example `v3.1.0` becomes `3.1.0`).
+
+The workflow uses PyPI trusted publishing, so no API token is stored in GitHub.
+One-time setup on PyPI (for the first release, add a pending publisher):
+
+- PyPI project name: `pywebasto-ng`
+- Owner: `srijken`, repository: `pywebasto`
+- Workflow name: `deploy-pypi.yml`
+- Environment name: `pypi`
