@@ -19,6 +19,15 @@ env:
 jobs:
   release:
     runs-on: ubuntu-latest
+    # Trusted publishing: PyPI accepts uploads from this workflow and
+    # environment without a stored token. Configure it once on PyPI for the
+    # project `pywebasto-ng` (see README, "Publishing").
+    environment:
+      name: pypi
+      url: https://pypi.org/p/pywebasto-ng
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - name: Validate release tag
         run: |
@@ -32,15 +41,6 @@ jobs:
         with:
           ref: refs/tags/${{ env.RELEASE_TAG }}
 
-      - name: Validate PyPI token
-        env:
-          PYPI_TOKEN: ${{ secrets.PYPI_TOKEN }}
-        run: |
-          if [ -z "$PYPI_TOKEN" ]; then
-            echo "::error::Missing secret PYPI_TOKEN."
-            exit 1
-          fi
-
       # The version is stamped into the build only; nothing is pushed back to main.
       - name: Stamp version ${{ env.RELEASE_TAG }}
         run: |
@@ -52,7 +52,5 @@ jobs:
       - name: Build
         run: poetry build
 
-      - name: Publish
-        env:
-          POETRY_PYPI_TOKEN_PYPI: ${{ secrets.PYPI_TOKEN }}
-        run: poetry publish
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
