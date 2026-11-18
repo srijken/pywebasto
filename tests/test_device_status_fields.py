@@ -27,7 +27,7 @@ APP_DATA = {
     ],
     "seen": 97,
     "location": {"state": "ON"},
-    "subscription": {"status": "ok", "expiration": 1796831722, "message": ""},
+    "subscription": {"status": "ok", "expiration": 1797336000, "message": ""},
     "alarms": "ON",
     "connection_lost": False,
     "vwarn": True,
