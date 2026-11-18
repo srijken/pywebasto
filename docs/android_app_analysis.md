@@ -1466,6 +1466,32 @@ responses:
 hidden or adjusted for `OUTA`. That supports treating it as a special
 alarm/geofence output rather than a normal controllable heater channel.
 
+### `OUTA` and the geofence button (live observation, 2026-11-18)
+
+Reading `/all?api_v=8` while the user pressed the geofence button in the
+official app:
+
+| App geofence button | `OUTA` `state` | top-level `alarms` | `seen` (s) |
+| --- | --- | --- | --- |
+| off | `ON` | `ON` | 250–315 |
+| on | `OFF` | `OFF` | 14 |
+| on | `OFF` | `OFF` | ~480 |
+| off | `ON` | `ON` | 12 |
+
+The button switches `OUTA` and `alarms` together, inverted (geofence active ⇔
+`OUTA` `"OFF"`). `general.geofence.enabled` and the radius did not change.
+The web portal calls `OUTA` "Alarm control" (its "Push button control"
+options Automatic / Output 1 / Alarm control / Webasto W-BUS Heater / Webasto
+W-BUS Ventilation map to `def_output` values `automatic` / `output1` / `OUTA`
+/ `webasto_heater` / `webasto_ventilation`). Portal Output 1 modes are
+Disabled / Enabled / Pulse control / Parallel control with W-BUS / Parallel
+control with W-BUS + Pulse control; a Disabled output appears under
+`disabled_outputs`.
+
+Which of `OUT A ON` / `OUT A OFF` activates the geofence was not captured.
+Working hypothesis (unverified): activate = `OUT A OFF`, deactivate =
+`OUT A ON`. See `protocol.md`, "Geofence (Alarm Output `OUTA`)".
+
 ## Settings Not Found In App Backend
 
 The existing web API notes and `pywebasto` implementation know about these

@@ -98,6 +98,9 @@ All paths are relative to `/webapi`.
   - `OUT 1 OFF`
   - `OUT 2 ON`
   - `OUT 2 OFF`
+  - `OUT A ON` / `OUT A OFF` (alarm control output `OUTA`, used by the app's
+    geofence button; sent by the client only through the app-backend `/cmd`
+    path, see "Geofence (Alarm Output `OUTA`)" below — EXPERIMENTAL)
 
 ## Settings Update (`/post_settings`)
 
@@ -290,7 +293,8 @@ Observed in app-backend device data on 2026-11-17 and exposed read-only:
 | `vwarn` | `true` | `low_voltage_warning` | Low-voltage warning. Observed `true` while voltage (10.1 V) was below `low_voltage_cutoff` (10.3 V); exact rule unconfirmed. |
 | `seen` | `97`–`465` | `last_seen_seconds` | Time since the device last contacted the cloud, assumed seconds; unconfirmed. |
 | `alarms` | `"ON"` | `alarm_state` | Raw alarm state; `"CONF"` was seen in earlier analysis. |
-| `geofence_enabled` | `true` | `geofence_enabled` | Geofence on/off. |
+| `geofence_enabled` | `true` | `geofence_enabled` | Raw `geofence_enabled` flag. Not checked during the 2026-11-18 geofence button test; do not confuse with `geofence_active` (below). |
+| output `OUTA` `state` | `"ON"` / `"OFF"` | `alarm_output` (raw dict), `geofence_active` | Geofence active ⇔ `OUTA` state `"OFF"` (inverted, see below). |
 | `subscription.status` | `"ok"` | `subscription_status` | Subscription status. |
 | output `*_available` | booleans | `output_main_features` | Feature flags of the active main output (parking heating, ventilation, eco, boost). |
 | `nextEvent` | `{"line": "OUTH", "type": "normal", "day": 4, "time": 1349}` or `{}` | `next_event` (`NextEvent` or `None`) | Next timer event. `line` is the output line; `type` was `normal` for simple timers and `smart` for smart timers; `time` matched the timer start (minutes after midnight UTC). **Meaning of `day` unknown**, kept raw. `{}` when no timer was enabled. |
@@ -312,6 +316,67 @@ The meaning of `day` is unknown: in observation 1 the next run is Wednesday
 and `day` is 4, in observation 2 the next run is Monday and `day` is 1, and in
 observation 3 a one-off timer whose time had already passed also gave 4. Do not
 derive a date from `day` until more captures explain it.
+
+## Geofence (Alarm Output `OUTA`) — EXPERIMENTAL
+
+### Observation (2026-11-18)
+
+App-backend `/all?api_v=8` device data was read on a real device while the
+user pressed the geofence button in the official Webasto app:
+
+| App geofence button | `OUTA` output `state` | Top-level `alarms` | `seen` (s since device contact) |
+| --- | --- | --- | --- |
+| off | `ON` | `ON` | 250–315 |
+| on | `OFF` | `OFF` | 14 |
+| on | `OFF` | `OFF` | ~480 |
+| off | `ON` | `ON` | 12 |
+
+The button switches `OUTA` and `alarms` together, **inverted**: geofence
+active ⇔ `OUTA` `"OFF"` and `alarms` `"OFF"`. The settings
+`general.geofence.enabled` (feature available) and the radius
+(`general.geofence.value`) did not change.
+
+### Web portal wording (user screenshots)
+
+The Webasto web portal describes the geofence setting as: "This enables the
+geofencing function. When geofence is activated (done by clicking the geofence
+button in the app), the position of ThermoConnect device is locked. If the
+vehicle moves outside the specified range, you will receive an app
+notification, a SMS and a phone call (only ThermoConnect 1)".
+
+Portal "Push button control" labels map one-to-one to `general.def_output`
+values:
+
+| Portal label | `def_output` value |
+| --- | --- |
+| Automatic | `automatic` |
+| Output 1 | `output1` |
+| Alarm control | `OUTA` |
+| Webasto W-BUS Heater | `webasto_heater` |
+| Webasto W-BUS Ventilation | `webasto_ventilation` |
+
+So `OUTA` is the portal's "Alarm control" output.
+
+Portal Output 1 modes: Disabled / Enabled / Pulse control / Parallel control
+with W-BUS / Parallel control with W-BUS + Pulse control. An output in mode
+Disabled appears under `disabled_outputs` in app data.
+
+### Commands and hypothesis (unverified)
+
+Static analysis of the Android app (see `android_app_analysis.md`, "Output
+Line Notes") shows the app sends `OUT A ON` / `OUT A OFF` through the same
+app-backend `/cmd` endpoint as `OUT H ON`. Which of the two commands
+**activates** the geofence was not observed. Given the inverted state, the
+working hypothesis is:
+
+- activate geofence → `OUT A OFF`
+- deactivate geofence → `OUT A ON`
+
+`WebastoConnect.set_geofence(device, active)` implements this hypothesis and
+`WebastoDevice.geofence_active` reads `OUTA` with the same inverse rule
+(`None` when `OUTA` is not in `outputs`). Both are experimental until a live
+test confirms that `set_geofence(device, True)` makes the app show the
+geofence as on.
 
 ## Known Gaps (Need Capture Validation)
 

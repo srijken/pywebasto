@@ -23,3 +23,4 @@ class Outputs(Enum):
     VENTILATION = "OUTV"
     AUX1 = "OUT1"
     AUX2 = "OUT2"
+    ALARM = "OUTA"

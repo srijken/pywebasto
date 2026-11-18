@@ -166,7 +166,9 @@ await webasto.update(force=True)
 | low_voltage_warning | Low-voltage warning flag (`vwarn`) | bool or None |
 | last_seen_seconds | Seconds since the device last contacted the cloud (`seen`) | int or None |
 | alarm_state | Raw alarm state (`alarms`, e.g. `ON`) | str or None |
-| geofence_enabled | Geofence is enabled | bool or None |
+| geofence_enabled | Raw `geofence_enabled` flag from app data | bool or None |
+| alarm_output | Raw alarm control output dict (`OUTA` in `outputs`) | dict or None |
+| geofence_active | EXPERIMENTAL: geofence active, `True` when `OUTA` state is `OFF` (inverted, inferred from observation) | bool or None |
 | geofence_radius | Geofence radius in km | float or None |
 | subscription_status | Subscription status (e.g. `ok`) | str or None |
 | default_output | Default output setting (`def_output`) | str or None |
@@ -191,6 +193,7 @@ await webasto.update(force=True)
 | set_output_aux1 | Turn AUX1 on/off |
 | set_output_aux2 | Turn AUX2 on/off |
 | ventilation_mode | Switch between heating and ventilation |
+| set_geofence | EXPERIMENTAL: activate (`OUT A OFF`) or deactivate (`OUT A ON`) the geofence; command mapping inferred, unverified (see `docs/protocol.md`) |
 | associate_device | Start association for a DeviceID and CheckID |
 | association_status | Read association status for a device |
 | disassociate_device | Remove this app client from a device |
