@@ -1,7 +1,51 @@
 """Device class for Webasto devices."""
 
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any
+
+
+@dataclass(frozen=True)
+class NextEvent:
+    """Next timer event as reported by the app backend (`nextEvent`).
+
+    Observed fields (see `docs/protocol.md`):
+    - `line`: output line of the event, e.g. `OUTH`.
+    - `type`: `normal` for simple timers, `smart` for smart timers.
+    - `time`: the timer start in minutes after midnight UTC.
+    - `day`: an integer whose meaning is unknown; do not derive a date from it.
+    """
+
+    line: str | None
+    type: str | None
+    time_utc_minutes: int | None
+    day: int | None
+    raw: dict[str, Any] = field(default_factory=dict)
+
+    @classmethod
+    def from_api_dict(cls, value: Any) -> "NextEvent | None":
+        """Parse a raw `nextEvent` value; None when missing, empty or not a dict."""
+        if not isinstance(value, dict) or not value:
+            return None
+        return cls(
+            line=_typed(value.get("line"), str),
+            type=_typed(value.get("type"), str),
+            time_utc_minutes=_int_or_none(value.get("time")),
+            day=_int_or_none(value.get("day")),
+            raw=dict(value),
+        )
+
+
+def _typed(value: Any, expected_type: type) -> Any:
+    """Return value when it has the expected type, otherwise None."""
+    return value if isinstance(value, expected_type) else None
+
+
+def _int_or_none(value: Any) -> int | None:
+    """Return an int value (booleans excluded), otherwise None."""
+    if isinstance(value, bool) or not isinstance(value, int):
+        return None
+    return value
 
 
 class WebastoDevice:
@@ -522,6 +566,17 @@ class WebastoDevice:
             for key, value in self.__output_main.items()
             if key.endswith("_available") and isinstance(value, bool)
         }
+
+    @property
+    def next_event(self) -> NextEvent | None:
+        """Get the next timer event reported by the backend (`nextEvent`).
+
+        `time_utc_minutes` matched the timer start in observations; the
+        meaning of `day` is unknown and kept raw.
+        """
+        if not isinstance(self.__last_data, dict):
+            return None
+        return NextEvent.from_api_dict(self.__last_data.get("nextEvent"))
 
     def __data_value(self, key: str, expected_type: Any) -> Any:
         """Get a typed top-level value from the latest app data."""
