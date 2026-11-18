@@ -29,7 +29,7 @@ from .consts import (
     CMD_VENTILATION_ON,
     USER_AGENT,
 )
-from .device import WebastoDevice
+from .device import NextEvent, WebastoDevice
 from .enums import Outputs, Request
 from .exceptions import (
     ForbiddenException,
@@ -42,6 +42,7 @@ from .timer import SimpleTimer, SmartTimer, Timer, UnknownTimer, timer_from_api_
 
 __all__ = [
     "AppCredentials",
+    "NextEvent",
     "SimpleTimer",
     "SmartTimer",
     "Timer",

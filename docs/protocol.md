@@ -293,6 +293,25 @@ Observed in app-backend device data on 2026-11-17 and exposed read-only:
 | `geofence_enabled` | `true` | `geofence_enabled` | Geofence on/off. |
 | `subscription.status` | `"ok"` | `subscription_status` | Subscription status. |
 | output `*_available` | booleans | `output_main_features` | Feature flags of the active main output (parking heating, ventilation, eco, boost). |
+| `nextEvent` | `{"line": "OUTH", "type": "normal", "day": 4, "time": 1349}` or `{}` | `next_event` (`NextEvent` or `None`) | Next timer event. `line` is the output line; `type` was `normal` for simple timers and `smart` for smart timers; `time` matched the timer start (minutes after midnight UTC). **Meaning of `day` unknown**, kept raw. `{}` when no timer was enabled. |
+
+### `nextEvent` observations
+
+All observed on Tuesday 2026-11-17 (user timezone Europe/Amsterdam, UTC+1).
+Timer `start` is in minutes after midnight UTC; `repeat` is the weekday
+bitmask Mon=1 … Sun=64.
+
+| # | Observed at (UTC) | Enabled timers on `OUTH` | `nextEvent` |
+| --- | --- | --- | --- |
+| 1 | ~22:37 | simple, repeat 127 (every day), start 1349 (22:29); simple, repeat 1 (Monday), start 390 (06:30) | `{"line": "OUTH", "type": "normal", "day": 4, "time": 1349}` |
+| 2 | a few minutes later | simple, repeat 1 (Monday), start 390 (06:30) | `{"line": "OUTH", "type": "normal", "day": 1, "time": 390}` |
+| 3 | ~22:45 | smart, repeat 0 (one-off), start 1360 (22:40 departure, already passed) | `{"line": "OUTH", "type": "smart", "day": 4, "time": 1360}` |
+| 4 | before any timer was enabled | none | `{}` |
+
+The meaning of `day` is unknown: in observation 1 the next run is Wednesday
+and `day` is 4, in observation 2 the next run is Monday and `day` is 1, and in
+observation 3 a one-off timer whose time had already passed also gave 4. Do not
+derive a date from `day` until more captures explain it.
 
 ## Known Gaps (Need Capture Validation)
 
