@@ -3,8 +3,9 @@
 import asyncio
 import json
 import logging
+import os
 from collections.abc import Awaitable, Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from inspect import isawaitable
 from pathlib import Path
 from time import monotonic
@@ -79,7 +80,37 @@ class AppCredentials:
     """Client credentials used by the Android app backend."""
 
     client_id: str
-    client_secret: str
+    # Bearer credential for the device: keep it out of repr() and logs.
+    client_secret: str = field(repr=False)
+
+
+MAX_ERROR_BODY_CHARS = 200
+
+
+def _error_body(text: str) -> str:
+    """Shorten a response body for use in an exception message.
+
+    Exceptions end up in logs and the Home Assistant UI; full API bodies can
+    contain device ids, check ids and locations.
+    """
+    text = text.strip()
+    if len(text) <= MAX_ERROR_BODY_CHARS:
+        return text
+    return f"{text[:MAX_ERROR_BODY_CHARS]}... ({len(text)} characters)"
+
+
+def _write_private_json(path: Path, data: dict) -> None:
+    """Write JSON atomically to a file readable by the owner only."""
+    tmp_path = path.with_name(f".{path.name}.tmp")
+    fd = os.open(tmp_path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as file:
+            json.dump(data, file, indent=2)
+            file.write("\n")
+        os.replace(tmp_path, path)
+    except BaseException:
+        tmp_path.unlink(missing_ok=True)
+        raise
 
 
 class WebastoConnect:
@@ -229,16 +260,13 @@ class WebastoConnect:
                 await result
 
         if self._credential_store_path is not None:
-            with self._credential_store_path.open("w", encoding="utf-8") as file:
-                json.dump(
-                    {
-                        "client_id": credentials.client_id,
-                        "client_secret": credentials.client_secret,
-                    },
-                    file,
-                    indent=2,
-                )
-                file.write("\n")
+            _write_private_json(
+                self._credential_store_path,
+                {
+                    "client_id": credentials.client_id,
+                    "client_secret": credentials.client_secret,
+                },
+            )
 
     async def _ensure_app_credentials(self) -> None:
         """Ensure app client credentials exist."""
@@ -410,7 +438,7 @@ class WebastoConnect:
 
                         text = await response.text()
                         raise InvalidRequestException(
-                            f"API reported {response.status}: {text}"
+                            f"API reported {response.status}: {_error_body(text)}"
                         )
 
                     if "GET" in api_type.name:
@@ -419,7 +447,8 @@ class WebastoConnect:
                         except (aiohttp.ContentTypeError, json.JSONDecodeError) as err:
                             text = await response.text()
                             raise InvalidResponseException(
-                                f"Invalid JSON response for {api_type.name}: {text}"
+                                f"Invalid JSON response for {api_type.name} "
+                                f"({len(text)} characters)"
                             ) from err
 
                     return None
@@ -427,6 +456,7 @@ class WebastoConnect:
                 TimeoutError,
                 aiohttp.ClientConnectionError,
                 aiohttp.ClientOSError,
+                aiohttp.ClientPayloadError,
                 aiohttp.ServerTimeoutError,
             ) as err:
                 if attempt < max_attempts - 1:
@@ -491,7 +521,7 @@ class WebastoConnect:
                             "Too many requests - you are being rate limited"
                         )
                     raise InvalidRequestException(
-                        f"App API reported {response.status}: {text}"
+                        f"App API reported {response.status}: {_error_body(text)}"
                     )
 
                 if expect_json:
@@ -499,7 +529,8 @@ class WebastoConnect:
                         return json.loads(text)
                     except json.JSONDecodeError as err:
                         raise InvalidResponseException(
-                            f"Invalid JSON response for app request {path}: {text}"
+                            "Invalid JSON response for app request "
+                            f"{path} ({len(text)} characters)"
                         ) from err
 
                 return text
@@ -507,6 +538,7 @@ class WebastoConnect:
             TimeoutError,
             aiohttp.ClientConnectionError,
             aiohttp.ClientOSError,
+            aiohttp.ClientPayloadError,
             aiohttp.ServerTimeoutError,
         ) as err:
             raise InvalidRequestException(f"App API request failed: {err}") from err
@@ -559,6 +591,9 @@ class WebastoConnect:
             raise InvalidResponseException("Invalid app data response")
 
         for device_data in self._data.get("devices", []):
+            if not isinstance(device_data, dict) or "id" not in device_data:
+                LOGGER.debug("Skipping app device entry without an id")
+                continue
             device_id = str(device_data["id"])
             device = self.devices.get(device_id)
             if device is None:
