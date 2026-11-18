@@ -510,6 +510,38 @@ class WebastoDevice:
         return self.__data_value("alarms", str)
 
     @property
+    def alarm_output(self) -> dict | None:
+        """Get the alarm control output (`OUTA` in `outputs`), or None.
+
+        Only the `outputs` section of the latest data is searched.
+        """
+        if not isinstance(self.__last_data, dict):
+            return None
+        for output in self.__last_data.get("outputs") or []:
+            if isinstance(output, dict) and output.get("line") == "OUTA":
+                return output
+        return None
+
+    @property
+    def geofence_active(self) -> bool | None:
+        """Get whether the geofence is active (EXPERIMENTAL).
+
+        Observed: the app's geofence button switches `OUTA` (and `alarms`)
+        inverted, so `OUTA` state `"OFF"` means the geofence is active and
+        `"ON"` means it is not. Returns None when `OUTA` is missing or has
+        another state.
+        """
+        output = self.alarm_output
+        if output is None:
+            return None
+        state = output.get("state")
+        if state == "OFF":
+            return True
+        if state == "ON":
+            return False
+        return None
+
+    @property
     def geofence_enabled(self) -> bool | None:
         """Get whether the geofence is enabled (`geofence_enabled` in app data)."""
         return self.__data_value("geofence_enabled", bool)

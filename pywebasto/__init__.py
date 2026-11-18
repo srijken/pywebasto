@@ -19,6 +19,8 @@ from .consts import (
     APP_API_URL,
     APP_CLIENT_INFO,
     APP_USER_AGENT,
+    CMD_ALARM_OFF,
+    CMD_ALARM_ON,
     CMD_AUX1_OFF,
     CMD_AUX1_ON,
     CMD_AUX2_OFF,
@@ -976,6 +978,26 @@ class WebastoConnect:
             await self._send_device_command(device, CMD_AUX2_ON)
         else:
             await self._send_device_command(device, CMD_AUX2_OFF)
+        await self.update(device_id=device.device_id, force=True)
+
+    async def set_geofence(self, device: WebastoDevice, active: bool) -> None:
+        """Activate or deactivate the geofence (EXPERIMENTAL).
+
+        The Webasto app's geofence button switches the alarm control output
+        `OUTA` and the top-level `alarms` value together, inverted: with the
+        geofence active both read `"OFF"` (see `WebastoDevice.geofence_active`).
+        The app sends `OUT A ON` / `OUT A OFF` through the same `/cmd` endpoint
+        as the other outputs, but which command activates the geofence was not
+        captured. The mapping used here is inferred from the observed inverted
+        state and is unverified: `active=True` sends `OUT A OFF`,
+        `active=False` sends `OUT A ON`.
+        """
+        self._raise_if_pending(device)
+
+        if active:
+            await self._send_device_command(device, CMD_ALARM_OFF)
+        else:
+            await self._send_device_command(device, CMD_ALARM_ON)
         await self.update(device_id=device.device_id, force=True)
 
     async def ventilation_mode(self, device: WebastoDevice, state: bool) -> None:
